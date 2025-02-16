@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
+import { getBabysitterDashboard, updateBabysitterAvailability } from '../services/api';
 import { StarIcon, ClockIcon, CurrencyDollarIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
 export default function BabysitterDashboard() {
@@ -18,12 +18,16 @@ export default function BabysitterDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/babysitters/dashboard');
-      setDashboardData(response.data.data);
-      setDisponibilite(response.data.data.disponibilite);
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data');
+      const response = await getBabysitterDashboard();
+      if (response.success) {
+        setDashboardData(response.data);
+        if ('disponibilite' in response.data) {
+          setDisponibilite(response.data.disponibilite);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -31,164 +35,156 @@ export default function BabysitterDashboard() {
 
   const handleAvailabilityToggle = async () => {
     try {
-      const response = await api.patch('/babysitters/availability', {
-        disponibilite: !disponibilite
-      });
-      if (response.data.success) {
+      const response = await updateBabysitterAvailability(!disponibilite);
+      if (response.success) {
         setDisponibilite(!disponibilite);
       }
-    } catch (err) {
-      console.error('Error updating availability:', err);
+    } catch (error) {
+      console.error('Error updating availability:', error);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-red-50 text-red-600 p-4 rounded-md">
-          {error}
-        </div>
+      <div className="text-center p-4">
+        <p className="text-red-600">Error: {error}</p>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="text-center p-4">
+        <p>No data available</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-        <div className="px-6 py-8 bg-primary-600">
-          <h1 className="text-3xl font-bold text-white">
-            Welcome back, {user?.name}!
-          </h1>
-          <p className="mt-2 text-primary-100">
-            Manage your babysitting services and availability
-          </p>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold">Welcome, {user?.name}</h1>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard
+          icon={CalendarIcon}
+          title="Upcoming Bookings"
+          value={dashboardData.stats.upcomingReservationsCount}
+          color="primary"
+        />
+        <StatCard
+          icon={CurrencyDollarIcon}
+          title="Total Earnings"
+          value={`${dashboardData.stats.totalEarnings} TND`}
+          color="green"
+        />
+        <StatCard
+          icon={StarIcon}
+          title="Average Rating"
+          value={dashboardData.stats.averageRating}
+          color="yellow"
+        />
+        <StatCard
+          icon={ClockIcon}
+          title="Total Reservations"
+          value={dashboardData.stats.totalReservations}
+          color="blue"
+        />
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Recent Reservations */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Recent Reservations</h2>
+          {dashboardData.recentReservations.length > 0 ? (
+            <div className="space-y-4">
+              {dashboardData.recentReservations.map((reservation) => (
+                <ReservationCard key={reservation._id} reservation={reservation} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No recent reservations</p>
+          )}
         </div>
 
-        {/* Availability Toggle */}
-        <div className="bg-white p-4 rounded-lg shadow mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">Availability Status</h3>
-              <p className="text-sm text-gray-500">
-                {disponibilite ? 'You are currently available for bookings' : 'You are currently unavailable for bookings'}
-              </p>
+        {/* Recent Reviews */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Recent Reviews</h2>
+          {dashboardData.recentReviews.length > 0 ? (
+            <div className="space-y-4">
+              {dashboardData.recentReviews.map((review) => (
+                <ReviewCard key={review._id} review={review} />
+              ))}
             </div>
-            <button
-              onClick={handleAvailabilityToggle}
-              className={`${
-                disponibilite ? 'bg-primary-600' : 'bg-gray-200'
-              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
-            >
-              <span className="sr-only">Toggle availability</span>
-              <span
-                className={`${
-                  disponibilite ? 'translate-x-6' : 'translate-x-1'
-                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-              />
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-primary-100">
-                <CalendarIcon className="h-6 w-6 text-primary-600" />
-              </div>
-              <div className="ml-4">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Upcoming
-                </h2>
-                <p className="text-3xl font-bold text-primary-600">
-                  {dashboardData?.stats?.upcomingReservationsCount || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100">
-                <CurrencyDollarIcon className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Earnings
-                </h2>
-                <p className="text-3xl font-bold text-green-600">
-                  {dashboardData?.stats?.totalEarnings || 0} TND
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-yellow-100">
-                <StarIcon className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Rating
-                </h2>
-                <p className="text-3xl font-bold text-yellow-600">
-                  {dashboardData?.stats?.rating?.toFixed(1) || '0.0'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100">
-                <ClockIcon className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Hours
-                </h2>
-                <p className="text-3xl font-bold text-blue-600">
-                  {dashboardData?.stats?.totalHoursBooked || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="p-6 border-t">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Link
-              to="/availability"
-              className="block p-6 bg-white border rounded-lg hover:shadow-md transition-shadow"
-            >
-              <h3 className="text-lg font-medium text-gray-900">Availability</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                Manage your working hours and schedule
-              </p>
-            </Link>
-
-            <Link
-              to="/reservations"
-              className="block p-6 bg-white border rounded-lg hover:shadow-md transition-shadow"
-            >
-              <h3 className="text-lg font-medium text-gray-900">Reservations</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                View and manage your bookings
-              </p>
-            </Link>
-          </div>
+          ) : (
+            <p className="text-gray-500">No reviews yet</p>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, title, value, color }) {
+  const colorClasses = {
+    primary: 'text-primary-600',
+    green: 'text-green-600',
+    yellow: 'text-yellow-600',
+    blue: 'text-blue-600'
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center">
+        <Icon className={`h-8 w-8 ${colorClasses[color]}`} />
+        <div className="ml-4">
+          <h2 className="text-sm font-medium text-gray-500">{title}</h2>
+          <p className={`text-2xl font-semibold ${colorClasses[color]}`}>{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReservationCard({ reservation }) {
+  return (
+    <div className="border-l-4 border-primary-600 pl-4">
+      <p className="font-medium">{reservation.parent.name}</p>
+      <p className="text-sm text-gray-500">
+        {new Date(reservation.date).toLocaleDateString()} at {reservation.time}
+      </p>
+      <p className="text-sm font-medium text-primary-600">{reservation.status}</p>
+    </div>
+  );
+}
+
+function ReviewCard({ review }) {
+  return (
+    <div className="border-l-4 border-yellow-400 pl-4">
+      <div className="flex items-center">
+        <p className="font-medium">{review.parent.name}</p>
+        <div className="flex ml-2">
+          {[...Array(5)].map((_, i) => (
+            <StarIcon
+              key={i}
+              className={`h-4 w-4 ${
+                i < review.rating ? 'text-yellow-400' : 'text-gray-300'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+      <p className="text-sm text-gray-600 mt-1">{review.comment}</p>
     </div>
   );
 } 

@@ -225,4 +225,14 @@ export const getBabysitterDashboard = async () => {
   }
 };
 
+export const updateBabysitterAvailability = async (disponibilite) => {
+  try {
+    const response = await api.patch('/babysitters/availability', { disponibilite });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating availability:', error);
+    throw error;
+  }
+};
+
 export default api; 

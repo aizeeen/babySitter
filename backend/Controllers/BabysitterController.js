@@ -212,41 +212,47 @@ exports.searchBabysitters = async (req, res) => {
 
 exports.getDashboardData = async (req, res) => {
   try {
-    const babysitter = await Babysitter.findById(req.user._id);
-    if (!babysitter) {
-      return res.status(404).json({
-        success: false,
-        message: "Babysitter not found"
-      });
-    }
+    const babysitterId = req.user.id;
 
-    // Get reservations
-    const reservations = await Reservation.find({ 
-      babysitter: req.user._id 
-    });
+    // Get babysitter data along with reservations and reviews
+    const [babysitter, reservations, reviews] = await Promise.all([
+      Babysitter.findById(babysitterId).select('disponibilite'),
+      Reservation.find({ babysitter: babysitterId })
+        .populate('parent', 'name photo')
+        .sort('-createdAt'),
+      Evaluation.find({ babysitter: babysitterId })
+        .populate('parent', 'name photo')
+        .sort('-createdAt')
+    ]);
 
-    // Calculate pending requests
-    const pendingRequests = reservations.filter(r => r.status === 'pending').length;
-
-    // Calculate total earnings from completed reservations
+    // Calculate statistics
+    const upcomingReservations = reservations.filter(r => new Date(r.date) > new Date());
     const totalEarnings = reservations
       .filter(r => r.status === 'completed')
-      .reduce((total, r) => total + (r.totale || 0), 0);
+      .reduce((sum, r) => sum + r.totale, 0);
 
-    res.status(200).json({
+    const dashboardData = {
       success: true,
       data: {
         disponibilite: babysitter.disponibilite,
+        upcomingReservations,
+        recentReservations: reservations.slice(0, 5),
+        recentReviews: reviews.slice(0, 5),
         stats: {
-          pendingRequests,
+          totalReservations: reservations.length,
+          upcomingReservationsCount: upcomingReservations.length,
+          totalReviews: reviews.length,
           totalEarnings,
-          totalReviews: babysitter.totalReviews || 0,
-          rating: babysitter.rating || 0
+          averageRating: reviews.length > 0 
+            ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+            : 0
         }
       }
-    });
+    };
+
+    res.status(200).json(dashboardData);
   } catch (error) {
-    console.error('Dashboard data error:', error);
+    console.error('Dashboard error:', error);
     res.status(500).json({
       success: false,
       message: "Error fetching dashboard data",
