@@ -1,30 +1,19 @@
 import { Link } from 'react-router-dom';
 import { StarIcon } from '@heroicons/react/20/solid';
+import UserAvatar from './UserAvatar';
 
 export default function BabysitterCard({ babysitter }) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <div className="p-6">
         <div className="flex items-center">
-          <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
-            {babysitter.photo ? (
-              <img 
-                src={babysitter.photo} 
-                alt={babysitter.name}
-                className="h-12 w-12 rounded-full object-cover"
-              />
-            ) : (
-              <span className="text-xl font-semibold text-primary-600">
-                {babysitter.name[0]}
-              </span>
-            )}
-          </div>
+          <UserAvatar user={babysitter} size="lg" />
           <div className="ml-4">
             <h3 className="text-lg font-medium text-gray-900">{babysitter.name}</h3>
             <div className="flex items-center">
               <StarIcon className="h-5 w-5 text-yellow-400" />
               <span className="ml-1 text-sm text-gray-600">
-                {babysitter.rating || 0} ({babysitter.totalReviews || 0} reviews)
+                {babysitter.rating || 'No ratings'} ({babysitter.totalReviews || 0} reviews)
               </span>
             </div>
           </div>
@@ -35,7 +24,7 @@ export default function BabysitterCard({ babysitter }) {
           
           <div className="mt-4 flex justify-between items-center">
             <span className="text-lg font-semibold text-primary-600">
-              ${babysitter.tarif}/hr
+              {babysitter.tarif} TND/hr
             </span>
             <span className="text-sm text-gray-500">
               {babysitter.experience} years exp.

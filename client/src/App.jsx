@@ -9,9 +9,7 @@ import BabysitterList from './pages/BabysitterList';
 import BabysitterProfile from './pages/BabysitterProfile';
 import Reservations from './pages/Reservations';
 import ParentDashboard from './pages/ParentDashboard';
-import BabysitterDashboard from './pages/BabysitterDashboard';
-import BabysitterAvailability from './pages/BabysitterAvailability';
-import BabysitterReviews from './pages/BabysitterReviews';
+import BabysitterDashboard from './pages/BabysitterDashboard.jsx';
 import Profile from './pages/Profile';
 
 const router = createBrowserRouter([
@@ -30,23 +28,23 @@ const router = createBrowserRouter([
       },
       { 
         path: "parent-dashboard", 
-        element: <PrivateRoute allowedRoles={['parent']}><ParentDashboard /></PrivateRoute> 
+        element: (
+          <PrivateRoute allowedRoles={['parent']}>
+            <ParentDashboard />
+          </PrivateRoute>
+        )
       },
       { 
         path: "babysitter-dashboard", 
-        element: <PrivateRoute allowedRoles={['babysitter']}><BabysitterDashboard /></PrivateRoute> 
+        element: (
+          <PrivateRoute allowedRoles={['babysitter']}>
+            <BabysitterDashboard />
+          </PrivateRoute>
+        )
       },
       {
         path: "profile",
         element: <PrivateRoute><Profile /></PrivateRoute>
-      },
-      {
-        path: "availability",
-        element: <PrivateRoute allowedRoles={['babysitter']}><BabysitterAvailability /></PrivateRoute>
-      },
-      {
-        path: "my-reviews",
-        element: <PrivateRoute allowedRoles={['babysitter']}><BabysitterReviews /></PrivateRoute>
       }
     ]
   }

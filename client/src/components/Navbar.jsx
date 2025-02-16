@@ -25,7 +25,6 @@ export default function Navbar() {
       { name: 'Home', href: '/' },
       { name: 'My Reservations', href: '/reservations' },
       { name: 'My Profile', href: '/profile' },
-      { name: 'Availability', href: '/availability' },
       { name: 'Dashboard', href: '/babysitter-dashboard' }
     ];
   };

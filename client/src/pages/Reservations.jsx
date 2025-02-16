@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getReservations, updateReservationStatus } from '../services/api';
+import { 
+  getReservations, 
+  updateReservation,
+  cancelReservation 
+} from '../services/api';
 import { format } from 'date-fns';
 
 export default function Reservations() {
@@ -17,9 +21,10 @@ export default function Reservations() {
     try {
       setLoading(true);
       const response = await getReservations();
-      setReservations(response.data);
+      setReservations(response.data?.reservations || []);
     } catch (err) {
-      setError('Failed to fetch reservations');
+      console.error('Error fetching reservations:', err);
+      setError('Failed to load reservations');
     } finally {
       setLoading(false);
     }
@@ -27,11 +32,23 @@ export default function Reservations() {
 
   const handleStatusUpdate = async (reservationId, newStatus) => {
     try {
-      await updateReservationStatus(reservationId, newStatus);
+      await updateReservation(reservationId, { status: newStatus });
       // Refresh reservations after update
       fetchReservations();
     } catch (err) {
+      console.error('Error updating reservation status:', err);
       setError('Failed to update reservation status');
+    }
+  };
+
+  const handleCancel = async (reservationId) => {
+    try {
+      await cancelReservation(reservationId);
+      // Refresh reservations after cancellation
+      fetchReservations();
+    } catch (err) {
+      console.error('Error canceling reservation:', err);
+      setError('Failed to cancel reservation');
     }
   };
 
@@ -58,17 +75,21 @@ export default function Reservations() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-red-50 text-red-600 p-4 rounded-md">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-2xl font-bold mb-6">My Reservations</h1>
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6">
-          {error}
-        </div>
-      )}
-
-      {reservations.length === 0 ? (
+      {!reservations || reservations.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <p className="text-gray-500">No reservations found</p>
         </div>
@@ -113,7 +134,7 @@ export default function Reservations() {
                         {reservation.status}
                       </span>
                       <span className="mt-1 text-sm font-medium text-gray-900">
-                        ${reservation.totale}
+                        {reservation.totale} TND
                       </span>
                     </div>
                   </div>
@@ -138,6 +159,17 @@ export default function Reservations() {
                   {reservation.description && (
                     <div className="mt-2">
                       <p className="text-sm text-gray-600">{reservation.description}</p>
+                    </div>
+                  )}
+
+                  {reservation.status === 'pending' && (
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleCancel(reservation._id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   )}
                 </div>

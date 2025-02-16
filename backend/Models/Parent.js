@@ -1,49 +1,58 @@
- // Import required modules
+// Import required modules
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
-const Parent  = new Schema({
-    id  : {
-        type: String,
-        required: true,
-        unique: true
-    } , 
+const ParentSchema = new Schema({
     name: {
         type: String,
-        required: true
+        required: [true, 'Name is required']
+    },
+    email: {
+        type: String,
+        required: [true, 'Email is required'],
+        unique: true,
+        trim: true,
+        lowercase: true
+    },
+    password: {
+        type: String,
+        required: [true, 'Password is required']
     },
     age: {
         type: Number,
-        required: true
-    } , 
-    email: {
+        required: [true, 'Age is required']
+    },
+    contact: {
         type: String,
-        required: true
-    
-    } , 
-    password: {
+        required: [true, 'Contact number is required']
+    },
+    adresse: {
         type: String,
-        required: true
-    } ,
-    contact : {
+        required: [true, 'Address is required']
+    },
+    photo: {
         type: String,
-        required: true
-    } , 
-
-
-    adresse : {
-        type: String,
-        required : true ,
-    } ,
-    photo : {
-        type: String,
-        required : true
-    } , 
+        default: 'https://randomuser.me/api/portraits/women/1.jpg'
+    },
     favoris: [{
         type: Schema.Types.ObjectId,
-        ref: 'Babysitter' 
-      }]
-   
+        ref: 'BabySitters'
+    }]
+}, {
+    timestamps: true,
+    id: false
 });
 
-module.exports = mongoose.model('Parents', Parent);
+
+ParentSchema.set('toJSON', {
+    transform: (doc, ret) => {
+        ret.id = ret._id;
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+    }
+});
+
+const Parent = mongoose.model('Parents', ParentSchema);
+
+module.exports = Parent;

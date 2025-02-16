@@ -5,12 +5,11 @@ const Babysitter = require("../Models/Babysitter");
 const mongoose = require("mongoose");
 
 async function signIn(req, res) {
-  const { email, password } = req.body;
-
   try {
-    console.log('Login attempt for email:', email); // Debug log
+    const { email, password } = req.body;
+    
+    console.log('Login attempt with:', { email });
 
-    // Try to find user in both Parent and Babysitter collections
     let user = await Parent.findOne({ email });
     let role = 'parent';
 
@@ -20,41 +19,59 @@ async function signIn(req, res) {
     }
 
     if (!user) {
-      console.log('No user found with email:', email); // Debug log
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({
+        success: false,
+        message: "User not found"
+      });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    console.log('Password validation result:', isPasswordValid); // Debug log
 
     if (!isPasswordValid) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid password"
+      });
     }
 
     const token = jwt.sign(
-      { userId: user._id, role },
+      { id: user._id, role },
       process.env.JWT_SECRET_KEY,
-      { expiresIn: "24h" }
+      { expiresIn: '24h' }
     );
 
-    // Return user data without password
-    const userData = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: role
+    console.log('Login successful:', {
+      userId: user._id,
+      role,
+      email: user.email
+    });
+
+    const response = {
+      success: true,
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role
+      }
     };
 
-    res.status(200).json({ token, user: userData });
+    console.log('Sending response:', response);
+    res.status(200).json(response);
   } catch (error) {
-    console.error("SignIn Error:", error);
-    res.status(500).json({ message: "Error signing in", error: error.message });
+    console.error('SignIn Error:', error);
+    res.status(500).json({
+      success: false,
+      message: "Error signing in",
+      error: error.message
+    });
   }
 }
 
 async function signUp(req, res) {
   try {
-    console.log('Signup request body:', req.body); // Debug log
+    console.log('Signup request body:', req.body);
 
     const {
       name,
@@ -63,28 +80,64 @@ async function signUp(req, res) {
       age,
       contact,
       adresse,
-      photo,
-      role,
+      photo = 'default-avatar.png',
+      role = 'parent',
+      // hedhom ytzedu babysitter
       tarif,
       experience,
       competances,
       disponibilite,
+      languages,
+      certifications,
+      bio
     } = req.body;
 
-    // Check if user exists in either collection
-    const existingParent = await Parent.findOne({ email });
-    const existingBabysitter = await Babysitter.findOne({ email });
-
-    if (existingParent || existingBabysitter) {
-      return res.status(400).json({ message: "Email already exists" });
+    //validation taa credentials 
+    if (!name || !email || !password || !age || !contact || !adresse) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be provided",
+        errors: {
+          name: !name ? "Name is required" : null,
+          email: !email ? "Email is required" : null,
+          password: !password ? "Password is required" : null,
+          age: !age ? "Age is required" : null,
+          contact: !contact ? "Contact is required" : null,
+          adresse: !adresse ? "Address is required" : null
+        }
+      });
     }
 
-    // Hash password
+    // validation ll babysitter
+    if (role === 'babysitter') {
+      if (!tarif || !experience) {
+        return res.status(400).json({
+          success: false,
+          message: "Babysitter fields are required",
+          errors: {
+            tarif: !tarif ? "Hourly rate is required" : null,
+            experience: !experience ? "Experience is required" : null
+          }
+        });
+      }
+    }
+
+    // lhne ychuf lezm user mawjoud my3awdch yaaml sign up 
+    const existingParent = await Parent.findOne({ email: email.toLowerCase() });
+    const existingBabysitter = await Babysitter.findOne({ email: email.toLowerCase() });
+
+    if (existingParent || existingBabysitter) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists"
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const userData = {
       name,
-      email,
+      email: email.toLowerCase(),
       password: hashedPassword,
       age: parseInt(age),
       contact,
@@ -93,48 +146,61 @@ async function signUp(req, res) {
     };
 
     let user;
-    if (role.toLowerCase() === 'babysitter') {
-      // Add default values for babysitter-specific fields
-      user = new Babysitter({
-        ...userData,
-        tarif: tarif || 0,
-        experience: experience || 0,
-        competances: competances || [],
-        disponibilite: disponibilite || true
+    try {
+      if (role === 'babysitter') {
+        user = new Babysitter({
+          ...userData,
+          tarif: parseFloat(tarif),
+          experience: parseInt(experience),
+          competances: Array.isArray(competances) ? competances : [],
+          disponibilite: disponibilite !== false,
+          languages: Array.isArray(languages) ? languages : [],
+          certifications: Array.isArray(certifications) ? certifications : [],
+          bio: bio || ''
+        });
+      } else {
+        user = new Parent(userData);
+      }
+
+      await user.save();
+      console.log('User saved successfully:', user._id);
+
+      const token = jwt.sign(
+        { userId: user._id, role },
+        process.env.JWT_SECRET_KEY,
+        { expiresIn: "24h" }
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Account created successfully",
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role
+        }
       });
-    } else {
-      user = new Parent(userData);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
     }
-
-    console.log('Attempting to save user:', user); // Debug log
-
-    await user.save();
-
-    const token = jwt.sign(
-      { userId: user._id, role },
-      process.env.JWT_SECRET_KEY,
-      { expiresIn: "24h" }
-    );
-
-    // Return user data without password
-    const userResponse = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: role
-    };
-
-    res.status(201).json({
-      message: "Account created successfully",
-      token,
-      user: userResponse
-    });
   } catch (error) {
     console.error("SignUp Error:", error);
-    res.status(500).json({
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
       message: "Error creating account",
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: error.message
     });
   }
 }

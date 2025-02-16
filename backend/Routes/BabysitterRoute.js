@@ -4,20 +4,21 @@ const {
   getBabysitterById,
   updateAvailability,
   getBabysitterReviews,
+  createReview,
+  searchBabysitters,
+  getDashboardData
 } = require("../Controllers/BabysitterController");
-const { signIn, signUp, logout } = require("../Controllers/auth");
 const authMiddleware = require("../middleware/auth");
 const router = express.Router();
 
-// Change these routes to match your frontend
-router.post("/auth/login", signIn);  // Changed from /signin
-router.post("/auth/signup", signUp); // Changed from /signup
-router.post("/auth/logout", authMiddleware, logout);
-
+// Public routes
 router.get("/", getBabysitters);
-router.get("/:id", getBabysitterById);
-router.get("/:id/reviews", getBabysitterReviews);
+router.get("/search", searchBabysitters);
 
-router.put("/availability", authMiddleware, updateAvailability);
+// Protected routes
+router.get("/dashboard", authMiddleware, getDashboardData);
+router.patch("/availability", authMiddleware, updateAvailability);
+router.get("/:id/reviews", getBabysitterReviews);
+router.get("/:id", getBabysitterById);
 
 module.exports = router;

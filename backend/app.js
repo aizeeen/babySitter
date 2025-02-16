@@ -1,12 +1,7 @@
-const cors = require('cors');
+const express = require('express');
 
-// Update CORS configuration to allow both ports
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+const app = express();
 
-// Add OPTIONS handling for preflight requests
-app.options('*', cors()); 
+// Remove all CORS configuration from here since it's handled in index.js
+
+module.exports = app; 

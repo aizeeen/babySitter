@@ -1,17 +1,11 @@
 const express = require("express");
-const {
-  createReservation,
-  getReservations,
-  updateReservationStatus,
-  deleteReservation
-} = require("../Controllers/ReservationController");
+const ReservationController = require("../Controllers/ReservationController");
 const authMiddleware = require("../middleware/auth");
 const router = express.Router();
 
-// Define routes with their handlers
-router.post("/", authMiddleware, createReservation);
-router.get("/", authMiddleware, getReservations);
-router.patch("/:id/status", authMiddleware, updateReservationStatus);
-router.delete("/:id", authMiddleware, deleteReservation);
+router.post("/", authMiddleware, ReservationController.createReservation);
+router.get("/", authMiddleware, ReservationController.getReservations);
+router.patch("/:id/status", authMiddleware, ReservationController.updateReservationStatus);
+router.delete("/:id", authMiddleware, ReservationController.deleteReservation);
 
 module.exports = router;

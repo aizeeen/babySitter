@@ -2,35 +2,48 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
+const babysitterAvatars = [
+  'https://randomuser.me/api/portraits/women/4.jpg',
+  'https://randomuser.me/api/portraits/women/5.jpg',
+  'https://randomuser.me/api/portraits/women/6.jpg',
+  'https://randomuser.me/api/portraits/women/7.jpg',
+  'https://randomuser.me/api/portraits/women/8.jpg',
+];
+
 const BabysitterSchema = new Schema({
     name: {
         type: String,
-        required: true
+        required: [true, 'Name is required']
     },
     email: {
         type: String,
-        required: true,
-        unique: true
+        required: [true, 'Email is required'],
+        unique: true,
+        trim: true,
+        lowercase: true
     },
     password: {
         type: String,
-        required: true
+        required: [true, 'Password is required']
     },
     age: {
         type: Number,
-        required: true
+        required: [true, 'Age is required']
     },
     contact: {
         type: String,
-        required: true
+        required: [true, 'Contact number is required']
     },
     adresse: {
         type: String,
-        required: true
+        required: [true, 'Address is required']
     },
     photo: {
         type: String,
-        required: true
+        default: function() {
+            const randomIndex = Math.floor(Math.random() * babysitterAvatars.length);
+            return babysitterAvatars[randomIndex];
+        }
     },
     tarif: {
         type: Number,
@@ -77,8 +90,12 @@ const BabysitterSchema = new Schema({
         maxlength: 500
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    id: false,
+    versionKey: false
 });
+
+BabysitterSchema.set('autoIndex', false);
 
 BabysitterSchema.index({ 
     name: 'text', 
@@ -86,5 +103,21 @@ BabysitterSchema.index({
     competances: 'text' 
 });
 
-module.exports = mongoose.model('BabySitters', BabysitterSchema);
+BabysitterSchema.index({ 
+    adresse: 'text',
+    name: 'text'
+});
+
+BabysitterSchema.statics.searchByAddress = function(address) {
+    return this.find({
+        $or: [
+            { adresse: { $regex: address, $options: 'i' } },
+            { adresse: { $text: { $search: address } } }
+        ]
+    });
+};
+
+const Babysitter = mongoose.model('BabySitters', BabysitterSchema);
+
+module.exports = Babysitter;
  

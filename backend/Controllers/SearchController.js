@@ -46,10 +46,12 @@ exports.searchBabysitters = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const babysitters = await Babysitter.find(query)
-      .select("-password")
+      .select('name photo rating totalReviews experience tarif languages competances disponibilite bio adresse')
       .skip(skip)
       .limit(limit)
       .sort({ rating: -1 });
+
+    console.log('Babysitters data:', babysitters.map(b => ({ name: b.name, photo: b.photo })));
 
     const total = await Babysitter.countDocuments(query);
 

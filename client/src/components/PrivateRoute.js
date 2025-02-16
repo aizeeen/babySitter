@@ -1,8 +1,19 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function PrivateRoute({ children, allowedRoles = [] }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
+
+  // Debug logs
+  console.log('PrivateRoute:', {
+    path: location.pathname,
+    user,
+    allowedRoles,
+    loading,
+    storedRole: localStorage.getItem('userRole'),
+    storedUser: localStorage.getItem('user')
+  });
 
   if (loading) {
     return (
@@ -13,12 +24,23 @@ export default function PrivateRoute({ children, allowedRoles = [] }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    console.log('No user found, redirecting to login');
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    // Redirect to appropriate dashboard based on role
-    return <Navigate to={user.role === 'babysitter' ? '/babysitter-dashboard' : '/parent-dashboard'} />;
+  const userRole = user.role?.toLowerCase();
+  const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase());
+
+  console.log('Role check:', {
+    userRole,
+    normalizedAllowedRoles,
+    hasAccess: allowedRoles.length === 0 || normalizedAllowedRoles.includes(userRole)
+  });
+
+  if (allowedRoles.length > 0 && !normalizedAllowedRoles.includes(userRole)) {
+    console.log(`User with role ${userRole} denied access to ${location.pathname}`);
+    const redirectPath = userRole === 'babysitter' ? '/babysitter-dashboard' : '/parent-dashboard';
+    return <Navigate to={redirectPath} replace />;
   }
 
   return children;

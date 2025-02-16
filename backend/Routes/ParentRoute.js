@@ -23,4 +23,6 @@ router.get("/favorites", authMiddleware, ParentController.getFavorites);
 
 router.get('/parents', ParentController.getParents);
 
+router.get("/dashboard", authMiddleware, ParentController.getDashboardData);
+
 module.exports = router;

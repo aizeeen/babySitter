@@ -2,64 +2,53 @@ const Reservation = require("../Models/Reservation");
 const Babysitter = require("../Models/Babysitter");
 const Parent = require("../Models/Parent");
 
-// Create a single object to hold all controller functions
+
 const ReservationController = {
   createReservation: async (req, res) => {
     try {
-      console.log('Received reservation data:', req.body);
-
-      const { 
-        babysitterId, 
-        date, 
-        time, 
-        duration, 
-        description 
-      } = req.body;
-
-      // Get parent ID from authenticated user
-      const parentId = req.user._id;
-
-      // Validate babysitter exists
-      const babysitter = await Babysitter.findById(babysitterId);
-      if (!babysitter) {
-        return res.status(404).json({ message: "Babysitter not found" });
+      console.log('Received reservation request:', req.body);
+      const { babysitter, date, time, duration, description } = req.body;
+      
+      // Get babysitter to calculate total
+      const babysitterDoc = await Babysitter.findById(babysitter);
+      if (!babysitterDoc) {
+        return res.status(404).json({
+          success: false,
+          message: "Babysitter not found"
+        });
       }
 
       // Calculate total cost
-      const totale = babysitter.tarif * duration;
+      const totale = babysitterDoc.tarif * duration;
 
-      // Create new reservation
       const reservation = new Reservation({
-        date: new Date(date),
+        babysitter,
+        parent: req.user._id,
+        date,
         time,
-        duration: parseInt(duration),
-        babysitter: babysitterId,
-        parent: parentId,
+        duration,
         description,
         totale,
         status: 'pending'
       });
 
-      console.log('Creating reservation:', reservation);
-
       await reservation.save();
 
-      // Populate babysitter and parent details
-      await reservation.populate([
-        { path: 'babysitter', select: 'name photo' },
-        { path: 'parent', select: 'name' }
-      ]);
+      // Populate the saved reservation with babysitter and parent details
+      await reservation.populate('babysitter', 'name photo');
+      await reservation.populate('parent', 'name photo');
 
       res.status(201).json({
+        success: true,
         message: "Reservation created successfully",
-        reservation
+        data: reservation
       });
     } catch (error) {
-      console.error("Error creating reservation:", error);
-      res.status(500).json({ 
-        message: "Error creating reservation", 
-        error: error.message,
-        stack: error.stack 
+      console.error('Create reservation error:', error);
+      res.status(500).json({
+        success: false,
+        message: "Error creating reservation",
+        error: error.message
       });
     }
   },
@@ -119,5 +108,4 @@ const ReservationController = {
   }
 };
 
-// Export the controller object
 module.exports = ReservationController;

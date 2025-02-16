@@ -1,14 +1,15 @@
 const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
-const EvaluationSchema = new mongoose.Schema(
+const EvaluationSchema = new Schema(
   {
     babysitter: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "BabySitters",
       required: true,
     },
     parent: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Parents",
       required: true,
     },
@@ -33,4 +34,6 @@ const EvaluationSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Evaluations", EvaluationSchema);
+const Evaluation = mongoose.model("Evaluations", EvaluationSchema);
+
+module.exports = Evaluation;

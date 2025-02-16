@@ -1,53 +1,69 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { createReservation } from '../services/api';
-import Button from './ui/Button';
 
 export default function ReservationForm({ babysitter }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     date: '',
     time: '',
     duration: 1,
-    description: '',
-    totale: 0
+    description: ''
   });
 
-  // Calculate total cost when duration changes
-  useEffect(() => {
-    if (babysitter?.tarif) {
-      const total = babysitter.tarif * formData.duration;
-      setFormData(prev => ({ ...prev, totale: total }));
-    }
-  }, [formData.duration, babysitter?.tarif]);
+  // Calculate total cost based on duration and babysitter's rate
+  const calculateTotal = (hours) => {
+    return (babysitter.tarif * hours).toFixed(2);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Recalculate total when duration changes
+      if (name === 'duration') {
+        newData.totale = calculateTotal(value);
+      }
+      
+      return newData;
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!user) {
       navigate('/login');
       return;
     }
 
     try {
-      setError('');
       setLoading(true);
+      setError('');
 
       const reservationData = {
-        babysitterId: babysitter._id,
-        date: formData.date,
-        time: formData.time,
+        ...formData,
+        babysitter: babysitter._id,
         duration: parseInt(formData.duration),
-        description: formData.description,
-        totale: formData.totale
+        totale: parseFloat(calculateTotal(formData.duration))
       };
 
-      await createReservation(reservationData);
-      navigate('/reservations');
+      console.log('Sending reservation data:', reservationData);
+
+      const response = await createReservation(reservationData);
+      
+      if (response.success) {
+        navigate('/reservations');
+      } else {
+        throw new Error(response.message || 'Failed to create reservation');
+      }
     } catch (err) {
       console.error('Reservation error:', err);
       setError(err.response?.data?.message || 'Failed to create reservation');
@@ -56,21 +72,10 @@ export default function ReservationForm({ babysitter }) {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // Get minimum date (today)
-  const minDate = new Date().toISOString().split('T')[0];
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+        <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
           {error}
         </div>
       )}
@@ -80,10 +85,10 @@ export default function ReservationForm({ babysitter }) {
         <input
           type="date"
           name="date"
-          min={minDate}
           required
           value={formData.date}
           onChange={handleChange}
+          min={new Date().toISOString().split('T')[0]}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
         />
       </div>
@@ -102,56 +107,55 @@ export default function ReservationForm({ babysitter }) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Duration (hours)</label>
-        <input
-          type="number"
+        <select
           name="duration"
-          min="1"
-          max="12"
-          required
           value={formData.duration}
           onChange={handleChange}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-        />
+        >
+          {[...Array(12)].map((_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {i + 1} {i === 0 ? 'hour' : 'hours'}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Description</label>
         <textarea
           name="description"
-          rows="3"
-          required
           value={formData.description}
           onChange={handleChange}
-          placeholder="Please describe your needs..."
+          rows="3"
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+          placeholder="Any special requirements or notes..."
         />
       </div>
 
+      {/* Display calculated total */}
       <div className="bg-gray-50 p-4 rounded-md">
         <div className="flex justify-between items-center">
-          <span className="text-sm font-medium text-gray-500">Total Cost:</span>
-          <span className="text-lg font-semibold text-primary-600">
-            ${formData.totale.toFixed(2)}
-          </span>
+          <span className="text-sm font-medium text-gray-500">Rate per hour:</span>
+          <span className="font-medium">{babysitter.tarif} TND</span>
         </div>
-        <p className="mt-1 text-xs text-gray-500">
-          ${babysitter.tarif} per hour × {formData.duration} hours
-        </p>
+        <div className="flex justify-between items-center mt-2">
+          <span className="text-sm font-medium text-gray-500">Hours:</span>
+          <span className="font-medium">{formData.duration}</span>
+        </div>
+        <div className="flex justify-between items-center mt-2 text-lg font-semibold">
+          <span className="text-gray-900">Total:</span>
+          <span className="text-primary-600">{calculateTotal(formData.duration)} TND</span>
+        </div>
       </div>
 
-      <Button
+      <button
         type="submit"
         disabled={loading}
-        className="w-full"
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
       >
-        {loading ? 'Creating Reservation...' : 'Book Now'}
-      </Button>
-
-      {!user && (
-        <p className="text-sm text-gray-500 text-center mt-2">
-          Please <a href="/login" className="text-primary-600 hover:text-primary-500">login</a> to make a reservation
-        </p>
-      )}
+        {loading ? 'Booking...' : 'Book Now'}
+      </button>
     </form>
   );
 } 

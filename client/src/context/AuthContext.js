@@ -4,8 +4,10 @@ import { login, register, logout } from '../services/api';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState({
+    user: null,
+    loading: true
+  });
 
   useEffect(() => {
     const initializeAuth = () => {
@@ -13,66 +15,83 @@ export const AuthProvider = ({ children }) => {
       const savedUser = localStorage.getItem('user');
       
       if (token && savedUser) {
-        setUser(JSON.parse(savedUser));
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          console.log('Initializing auth with user:', parsedUser);
+          setState(prevState => ({ ...prevState, user: parsedUser }));
+        } catch (error) {
+          console.error('Error parsing saved user:', error);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
       }
-      setLoading(false);
+      setState(prevState => ({ ...prevState, loading: false }));
     };
 
     initializeAuth();
   }, []);
 
-  const signIn = async (email, password) => {
+  useEffect(() => {
+    // Add debug log
+    console.log('Current auth state:', state);
+  }, [state]);
+
+  const signIn = async (credentials) => {
     try {
-      setLoading(true);
-      console.log('Login attempt with:', { email });
-      const response = await login({ email, password });
-      console.log('Login response:', response);
+      setState(prevState => ({ ...prevState, loading: true }));
+      console.log('AuthContext: Attempting login with:', credentials.email);
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      const response = await login(credentials);
+      console.log('AuthContext: Login response:', response);
       
-      setUser(response.data.user);
-      return response.data;
+      if (!response.success || !response.token || !response.user) {
+        throw new Error('Invalid response from server');
+      }
+
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      
+      setState(prevState => ({ ...prevState, user: response.user, loading: false }));
+      return response;
     } catch (error) {
-      console.error('Login error in AuthContext:', error);
+      console.error('AuthContext: Login error:', error);
+      setState(prevState => ({ ...prevState, loading: false }));
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const signUp = async (userData) => {
     try {
-      setLoading(true);
-      console.log('Attempting to register with data:', userData);
+      setState(prevState => ({ ...prevState, loading: true }));
       const response = await register(userData);
-      console.log('Registration response:', response);
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      setUser(response.data.user);
-      return response.data;
+      if (response.success) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        setState(prevState => ({ ...prevState, user: response.user, loading: false }));
+        return response;
+      } else {
+        throw new Error(response.message || 'Registration failed');
+      }
     } catch (error) {
-      console.error('Registration error in AuthContext:', error);
+      setState(prevState => ({ ...prevState, loading: false }));
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
       await logout();
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setState(prevState => ({ ...prevState, user: null }));
     }
   };
 
-  if (loading) {
+  if (state.loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
@@ -81,7 +100,14 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ 
+      user: state.user, 
+      loading: state.loading,
+      isAuthenticated: !!state.user,
+      signIn, 
+      signUp, 
+      signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   );
