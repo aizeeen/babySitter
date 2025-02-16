@@ -176,8 +176,25 @@ export const addToFavorites = (babysitterId) => api.post(`/parents/favorites/${b
 export const removeFromFavorites = (babysitterId) => api.delete(`/parents/favorites/${babysitterId}`);
 
 // Profile
-export const updateProfile = (data) => api.put('/profile', data);
-export const getProfile = () => api.get('/profile');
+export const getProfile = async () => {
+  try {
+    const response = await api.get('/profile');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    throw error;
+  }
+};
+
+export const updateProfile = async (data) => {
+  try {
+    const response = await api.patch('/profile', data);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    throw error;
+  }
+};
 
 // Availability
 export const updateAvailability = (data) => api.put('/babysitters/availability', data);

@@ -9,7 +9,10 @@ const authMiddleware = async (req, res, next) => {
 
     if (!token) {
       console.log('No token provided'); // Debug log
-      return res.status(401).json({ message: "Authentication required" });
+      return res.status(401).json({
+        success: false,
+        message: "No token provided"
+      });
     }
 
     console.log('Verifying token:', token); // Debug log
@@ -31,13 +34,19 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // Add role to the user object if it's not already there
-    user.role = decoded.role;
-    req.user = user;
+    // Set the user object with id and role
+    req.user = {
+      id: decoded.id,
+      role: decoded.role
+    };
+    
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
-    res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token"
+    });
   }
 };
 

@@ -8,6 +8,7 @@ const reservationRoutes = require("./Routes/ReservationRoute");
 const searchRoutes = require("./Routes/SearchRoute");
 const authRoutes = require("./Routes/authRoute");
 const reviewRoutes = require('./Routes/ReviewRoute');
+const profileRoutes = require('./Routes/ProfileRoute');
 
 // Load environment variables
 dotenv.config();
@@ -50,6 +51,7 @@ app.use("/api/babysitters", babysitterRoutes);
 app.use("/api/reservations", reservationRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/profile", profileRoutes);
 
 // Debug route to test API
 app.get("/api/test", (req, res) => {
@@ -144,6 +146,7 @@ app.listen(PORT, () => {
   console.log('- /api/reservations');
   console.log('- /api/search');
   console.log('- /api/reviews');
+  console.log('- /api/profile');
 });
 
 // Error handling middleware
